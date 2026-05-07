@@ -1,0 +1,27 @@
+# Rust/Cargo
+/target/
+**/target/
+**/*.rs.bk
+Cargo.lock
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*~
+
+# Logs and temp files
+*.log
+*.tmp
+*.temp
+
+# Environment files
+.env
+.env.*
+
+# Docker
+docker-compose.override.yml
+
+# OS files
+.DS_Store
+Thumbs.db
