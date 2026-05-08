@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>♠ Blackjack</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #1a5c2a;
+      background-image: radial-gradient(ellipse at center, #1e7a35 0%, #0f3d1a 100%);
+      color: #f0e6c8;
+      font-family: Georgia, 'Times New Roman', serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── Screens ── */
+    .screen { display: none; width: 100%; max-width: 720px; padding: 24px; }
+    .screen.active { display: block; }
+
+    /* ── Login ── */
+    #screen-login { text-align: center; }
+    #screen-login h1 { font-size: 3rem; letter-spacing: 4px; text-shadow: 2px 2px 8px #000; margin-bottom: 8px; }
+    #screen-login p  { color: #c8b870; margin-bottom: 32px; }
+
+    .login-box {
+      background: rgba(0,0,0,.35);
+      border: 1px solid #c8b870;
+      border-radius: 12px;
+      padding: 32px;
+      display: inline-block;
+      min-width: 320px;
+    }
+    .login-box label { display: block; margin-bottom: 8px; color: #c8b870; }
+    .login-box input {
+      width: 100%; padding: 10px 14px; border-radius: 6px;
+      border: 1px solid #c8b870; background: #0d3318;
+      color: #f0e6c8; font-size: 1rem; margin-bottom: 16px;
+    }
+
+    /* ── Buttons ── */
+    button {
+      cursor: pointer; border: none; border-radius: 6px;
+      padding: 10px 20px; font-size: 1rem; font-family: inherit;
+      transition: transform .1s, opacity .2s;
+    }
+    button:active { transform: scale(.96); }
+    button:disabled { opacity: .4; cursor: not-allowed; }
+
+    .btn-gold {
+      background: linear-gradient(135deg, #c8b870, #a08840);
+      color: #0d1f0d; font-weight: bold; font-size: 1.1rem;
+      padding: 12px 28px;
+    }
+    .btn-gold:hover { background: linear-gradient(135deg, #ddd090, #b09850); }
+
+    .btn-green  { background: #2e8b57; color: #fff; }
+    .btn-green:hover { background: #3aaa6a; }
+
+    .btn-red    { background: #8b2e2e; color: #fff; }
+    .btn-red:hover { background: #aa3a3a; }
+
+    .btn-gray   { background: #3a3a3a; color: #ccc; }
+    .btn-gray:hover { background: #4a4a4a; }
+
+    .btn-sm { padding: 6px 14px; font-size: .9rem; }
+
+    /* ── Lobby ── */
+    .lobby-header {
+      display: flex; justify-content: space-between; align-items: center;
+      background: rgba(0,0,0,.3); border-radius: 10px; padding: 14px 20px;
+      margin-bottom: 20px; border: 1px solid rgba(200,184,112,.3);
+    }
+    .lobby-header .name { font-size: 1.1rem; color: #c8b870; }
+    .chips-badge {
+      background: #0d3318; border: 1px solid #c8b870; border-radius: 20px;
+      padding: 4px 14px; color: #f0e6c8; font-size: .95rem;
+    }
+
+    .lobby-actions { display: flex; gap: 12px; margin-bottom: 20px; }
+
+    .games-list { display: grid; gap: 10px; }
+    .game-card {
+      background: rgba(0,0,0,.3); border: 1px solid rgba(200,184,112,.3);
+      border-radius: 8px; padding: 14px 18px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .game-card .game-info { font-size: .9rem; color: #a0c8a0; }
+    .no-games { text-align: center; color: #7a9a7a; padding: 30px; }
+
+    /* ── Game screen ── */
+    #screen-game { padding: 16px; }
+
+    .game-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 16px; padding-bottom: 10px;
+      border-bottom: 1px solid rgba(200,184,112,.3);
+    }
+
+    .game-section {
+      background: rgba(0,0,0,.25); border-radius: 10px;
+      padding: 16px; margin-bottom: 14px;
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .game-section h3 {
+      font-size: .85rem; text-transform: uppercase; letter-spacing: 2px;
+      color: #c8b870; margin-bottom: 12px;
+    }
+
+    /* ── Cards ── */
+    .cards-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; min-height: 110px; }
+
+    .card {
+      width: 68px; height: 100px; border-radius: 8px;
+      background: #fff; border: 2px solid #ccc;
+      display: flex; flex-direction: column;
+      justify-content: space-between; padding: 5px 6px;
+      box-shadow: 2px 3px 8px rgba(0,0,0,.5);
+      font-family: Arial, sans-serif; font-weight: bold; font-size: 1rem;
+      flex-shrink: 0; position: relative;
+    }
+    .card.red  { color: #cc1111; }
+    .card.black { color: #111; }
+    .card.hidden {
+      background: repeating-linear-gradient(
+        45deg, #1a3a8a, #1a3a8a 5px, #1550c8 5px, #1550c8 10px
+      );
+      border: 2px solid #0a1a5a;
+    }
+    .card .rank { font-size: 1rem; line-height: 1; }
+    .card .suit { font-size: 1.4rem; text-align: center; line-height: 1; }
+    .card .rank-bot { transform: rotate(180deg); align-self: flex-end; }
+
+    .hand-score {
+      display: inline-block; background: rgba(0,0,0,.4);
+      border-radius: 12px; padding: 2px 10px;
+      font-size: .85rem; color: #f0e6c8; margin-top: 8px;
+    }
+    .hand-score.bust { color: #ff6666; }
+    .hand-score.blackjack { color: #ffd700; }
+
+    /* ── Controls ── */
+    #controls { text-align: center; margin: 16px 0; }
+
+    .bet-chips { display: flex; gap: 8px; justify-content: center; margin: 10px 0; flex-wrap: wrap; }
+    .chip-btn {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #e53, #922);
+      color: #fff; font-weight: bold; font-size: .9rem; border: 3px solid #fff;
+      box-shadow: 0 2px 6px rgba(0,0,0,.4);
+    }
+    .chip-btn.c25  { background: radial-gradient(circle at 35% 35%, #28a, #156); }
+    .chip-btn.c50  { background: radial-gradient(circle at 35% 35%, #8a2, #560); }
+    .chip-btn.c100 { background: radial-gradient(circle at 35% 35%, #a82, #640); }
+
+    .bet-display {
+      font-size: 1.6rem; color: #c8b870; margin: 10px 0;
+      text-shadow: 0 0 10px rgba(200,184,112,.4);
+    }
+
+    .action-btns { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+    .action-btns button { font-size: 1.1rem; padding: 12px 32px; }
+
+    .result-box {
+      background: rgba(0,0,0,.5); border-radius: 12px; padding: 20px;
+      border: 2px solid #c8b870; margin-bottom: 16px;
+    }
+    .result-outcome { font-size: 1.8rem; font-weight: bold; margin-bottom: 6px; }
+    .result-outcome.win       { color: #4dff88; }
+    .result-outcome.blackjack { color: #ffd700; }
+    .result-outcome.push      { color: #f0e6c8; }
+    .result-outcome.lose      { color: #ff6666; }
+    .result-chips { font-size: 1rem; color: #a0c8a0; }
+
+    /* ── Status bar ── */
+    .status-bar {
+      background: rgba(0,0,0,.4); border-radius: 8px; padding: 8px 14px;
+      text-align: center; color: #c8b870; font-size: .95rem;
+      margin-bottom: 12px; min-height: 36px;
+    }
+
+    /* ── Event log ── */
+    #event-log {
+      background: rgba(0,0,0,.3); border-radius: 8px; padding: 10px 14px;
+      max-height: 100px; overflow-y: auto; font-size: .78rem;
+      color: #7ab87a; font-family: monospace;
+    }
+    #event-log .log-entry { padding: 1px 0; border-bottom: 1px solid rgba(255,255,255,.05); }
+
+    /* ── Error ── */
+    .err-msg {
+      background: rgba(180,30,30,.3); border: 1px solid #cc4444;
+      border-radius: 6px; padding: 8px 14px; color: #ff9999;
+      margin: 8px 0; font-size: .9rem; display: none;
+    }
+    .err-msg.visible { display: block; }
+
+    /* ── Spinner ── */
+    .spinner { display: inline-block; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── WS indicator ── */
+    .ws-dot {
+      width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+      margin-right: 4px; background: #888;
+    }
+    .ws-dot.connected { background: #4dff88; box-shadow: 0 0 6px #4dff88; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════ LOGIN ═══════════════════ -->
+<div id="screen-login" class="screen active">
+  <h1>♠ Blackjack ♥</h1>
+  <p>Casino • Real-time • DDD</p>
+  <br/>
+  <div class="login-box">
+    <label for="inp-name">Tên người chơi</label>
+    <input id="inp-name" type="text" placeholder="Nhập tên của bạn..." maxlength="20" />
+    <div class="err-msg" id="login-err"></div>
+    <button class="btn-gold" style="width:100%" onclick="doLogin()">Vào bàn ▶</button>
+  </div>
+</div>
+
+<!-- ═══════════════════ LOBBY ═══════════════════ -->
+<div id="screen-lobby" class="screen">
+  <div class="lobby-header">
+    <span class="name" id="lby-name">—</span>
+    <span class="chips-badge">💰 <span id="lby-balance">0</span> chips</span>
+  </div>
+
+  <div class="lobby-actions">
+    <button class="btn-gold" onclick="createAndJoin()">+ Bàn mới</button>
+    <button class="btn-gray btn-sm" onclick="loadGames()">↻ Làm mới</button>
+  </div>
+
+  <div class="err-msg" id="lobby-err"></div>
+  <div class="games-list" id="games-list">
+    <p class="no-games">Đang tải danh sách bàn...</p>
+  </div>
+</div>
+
+<!-- ═══════════════════ GAME ═══════════════════ -->
+<div id="screen-game" class="screen">
+  <div class="game-header">
+    <button class="btn-gray btn-sm" onclick="exitToLobby()">← Lobby</button>
+    <span style="font-size:.9rem;color:#c8b870">
+      <span class="ws-dot" id="ws-dot"></span>Live
+    </span>
+    <span class="chips-badge">💰 <span id="gm-balance">0</span></span>
+  </div>
+
+  <div class="status-bar" id="status-bar">♠</div>
+
+  <!-- Dealer -->
+  <div class="game-section">
+    <h3>Dealer</h3>
+    <div class="cards-row" id="dealer-cards"></div>
+    <span class="hand-score" id="dealer-score" style="display:none"></span>
+  </div>
+
+  <!-- Player -->
+  <div class="game-section">
+    <h3>Bạn</h3>
+    <div class="cards-row" id="my-cards"></div>
+    <span class="hand-score" id="my-score" style="display:none"></span>
+  </div>
+
+  <!-- Controls -->
+  <div id="controls">
+
+    <!-- Betting -->
+    <div id="ctrl-bet" style="display:none">
+      <div class="bet-chips">
+        <button class="chip-btn"     onclick="addBet(10)">10</button>
+        <button class="chip-btn c25" onclick="addBet(25)">25</button>
+        <button class="chip-btn c50" onclick="addBet(50)">50</button>
+        <button class="chip-btn c100" onclick="addBet(100)">100</button>
+      </div>
+      <div class="bet-display">Cược: <span id="bet-display">0</span> chips</div>
+      <div class="action-btns">
+        <button class="btn-gray" onclick="clearBet()">Xóa</button>
+        <button class="btn-gold" id="btn-deal" onclick="doDeal()" disabled>Deal ▶</button>
+      </div>
+    </div>
+
+    <!-- Playing -->
+    <div id="ctrl-play" style="display:none">
+      <div class="action-btns">
+        <button class="btn-green" onclick="doHit()">Hit 🃏</button>
+        <button class="btn-red"   onclick="doStand()">Stand ✋</button>
+      </div>
+    </div>
+
+    <!-- Processing -->
+    <div id="ctrl-wait" style="display:none">
+      <span class="spinner">⟳</span> <span id="wait-msg">Đang xử lý...</span>
+    </div>
+
+    <!-- Result -->
+    <div id="ctrl-result" style="display:none">
+      <div class="result-box">
+        <div class="result-outcome" id="result-outcome">—</div>
+        <div class="result-chips"  id="result-chips"></div>
+      </div>
+      <div class="action-btns">
+        <button class="btn-gold" onclick="createAndJoin()">Ván mới ♻</button>
+        <button class="btn-gray" onclick="exitToLobby()">Lobby</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="err-msg" id="game-err"></div>
+
+  <!-- Event log -->
+  <div id="event-log"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// Config
+// ═══════════════════════════════════════════════
+const API_BASE = 'http://localhost:8080';
+const WS_BASE  = 'ws://localhost:8080';
+
+// ═══════════════════════════════════════════════
+// State
+// ═══════════════════════════════════════════════
+const S = {
+  playerId  : null,
+  playerName: null,
+  balance   : 0,
+  gameId    : null,
+  betAmount : 0,
+  ws        : null,
+  gameState : null,   // last GET /api/games/:id response
+};
+
+// ═══════════════════════════════════════════════
+// API helper
+// ═══════════════════════════════════════════════
+async function api(method, path, body) {
+  const res = await fetch(API_BASE + path, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  let data = null;
+  const ct = res.headers.get('content-type') || '';
+  if (ct.includes('json')) data = await res.json();
+  if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+  return data;
+}
+
+// ═══════════════════════════════════════════════
+// Screen helpers
+// ═══════════════════════════════════════════════
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+}
+
+function showErr(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.classList.add('visible');
+  setTimeout(() => el.classList.remove('visible'), 4000);
+}
+
+function setStatus(msg) {
+  document.getElementById('status-bar').textContent = msg;
+}
+
+function showCtrl(id) {
+  ['ctrl-bet','ctrl-play','ctrl-wait','ctrl-result'].forEach(c => {
+    document.getElementById(c).style.display = c === id ? '' : 'none';
+  });
+}
+
+function setAllDisabled(disabled) {
+  document.querySelectorAll('#screen-game button').forEach(b => {
+    if (!b.classList.contains('btn-gray') || b.id === 'btn-deal') {
+      b.disabled = disabled;
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════
+// Login
+// ═══════════════════════════════════════════════
+async function doLogin() {
+  const name = document.getElementById('inp-name').value.trim();
+  if (!name) { showErr('login-err', 'Vui lòng nhập tên'); return; }
+  try {
+    const p = await api('POST', '/api/players', { name, initial_balance: 1000 });
+    S.playerId   = p.id;
+    S.playerName = p.name;
+    S.balance    = p.balance;
+    showLobby();
+  } catch(e) { showErr('login-err', e.message); }
+}
+
+document.getElementById('inp-name').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+// ═══════════════════════════════════════════════
+// Lobby
+// ═══════════════════════════════════════════════
+function showLobby() {
+  document.getElementById('lby-name').textContent = S.playerName;
+  document.getElementById('lby-balance').textContent = S.balance;
+  show('lobby');
+  loadGames();
+}
+
+async function loadGames() {
+  const list = document.getElementById('games-list');
+  list.innerHTML = '<p class="no-games"><span class="spinner">⟳</span> Đang tải...</p>';
+  try {
+    const games = await api('GET', '/api/games');
+    if (!games || games.length === 0) {
+      list.innerHTML = '<p class="no-games">Chưa có bàn nào. Tạo bàn mới!</p>';
+      return;
+    }
+    list.innerHTML = games.map(g => `
+      <div class="game-card">
+        <div>
+          <div style="font-size:.95rem">Bàn <code>${g.id.slice(0,8)}</code></div>
+          <div class="game-info">${g.seat_count} người • ${fmtStatus(g.status)}</div>
+        </div>
+        <button class="btn-green btn-sm" onclick="joinExisting('${g.id}')">Tham gia</button>
+      </div>
+    `).join('');
+  } catch(e) { showErr('lobby-err', e.message); }
+}
+
+function fmtStatus(s) {
+  const map = {
+    waiting_for_players: 'Chờ người chơi',
+    waiting_for_bets: 'Đặt cược',
+    dealer_turn: 'Dealer đang đi',
+    settled: 'Kết thúc',
+  };
+  if (s.startsWith('player_turn')) return 'Đang chơi';
+  return map[s] || s;
+}
+
+async function createAndJoin() {
+  try {
+    showCtrl('ctrl-wait'); setStatus('Đang tạo bàn...');
+    const g = await api('POST', '/api/games');
+    S.gameId = g.id;
+    await api('POST', `/api/games/${S.gameId}/join`,    { player_id: S.playerId });
+    await api('POST', `/api/games/${S.gameId}/betting`);
+    startGameScreen();
+  } catch(e) { showErr('lobby-err', e.message); }
+}
+
+async function joinExisting(gameId) {
+  S.gameId = gameId;
+  try {
+    await api('POST', `/api/games/${gameId}/join`, { player_id: S.playerId });
+  } catch(e) {
+    // already joined — ignore "player already seated" error
+    if (!e.message.includes('already seated')) { showErr('lobby-err', e.message); return; }
+  }
+  startGameScreen();
+}
+
+// ═══════════════════════════════════════════════
+// Game screen init
+// ═══════════════════════════════════════════════
+function startGameScreen() {
+  document.getElementById('event-log').innerHTML = '';
+  S.betAmount = 0;
+  updateBalance(S.balance);
+  show('game');
+  connectWS();
+  renderBetting();
+}
+
+function exitToLobby() {
+  disconnectWS();
+  S.gameId = null;
+  S.betAmount = 0;
+  showLobby();
+}
+
+function updateBalance(bal) {
+  S.balance = bal;
+  document.getElementById('gm-balance').textContent = bal;
+  document.getElementById('lby-balance').textContent = bal;
+}
+
+// ═══════════════════════════════════════════════
+// Betting phase
+// ═══════════════════════════════════════════════
+function renderBetting() {
+  clearCards('dealer-cards');
+  clearCards('my-cards');
+  document.getElementById('dealer-score').style.display = 'none';
+  document.getElementById('my-score').style.display = 'none';
+  S.betAmount = 0;
+  updateBetDisplay();
+  showCtrl('ctrl-bet');
+  setStatus('Đặt cược của bạn ♠');
+}
+
+function addBet(n) {
+  if (S.betAmount + n > S.balance) return;
+  S.betAmount += n;
+  updateBetDisplay();
+}
+
+function clearBet() {
+  S.betAmount = 0;
+  updateBetDisplay();
+}
+
+function updateBetDisplay() {
+  document.getElementById('bet-display').textContent = S.betAmount;
+  document.getElementById('btn-deal').disabled = S.betAmount <= 0;
+}
+
+async function doDeal() {
+  if (S.betAmount <= 0) return;
+  showCtrl('ctrl-wait'); setStatus('Đang chia bài...');
+  try {
+    await api('POST', `/api/games/${S.gameId}/bet`, {
+      player_id: S.playerId,
+      amount: S.betAmount,
+    });
+    await api('POST', `/api/games/${S.gameId}/deal`);
+    await refreshGame();
+  } catch(e) {
+    showErr('game-err', e.message);
+    renderBetting();
+  }
+}
+
+// ═══════════════════════════════════════════════
+// Playing phase
+// ═══════════════════════════════════════════════
+async function doHit() {
+  setAllDisabled(true);
+  try {
+    await api('POST', `/api/games/${S.gameId}/hit`, { player_id: S.playerId });
+    await refreshGame();
+  } catch(e) { showErr('game-err', e.message); }
+  setAllDisabled(false);
+}
+
+async function doStand() {
+  setAllDisabled(true);
+  showCtrl('ctrl-wait'); setStatus('Đang xử lý...');
+  try {
+    await api('POST', `/api/games/${S.gameId}/stand`, { player_id: S.playerId });
+    await finishRound();
+  } catch(e) { showErr('game-err', e.message); setAllDisabled(false); }
+}
+
+async function finishRound() {
+  try {
+    const g = await api('GET', `/api/games/${S.gameId}`);
+    if (g.status === 'dealer_turn') {
+      setStatus('Dealer đang rút bài...');
+      await api('POST', `/api/games/${S.gameId}/dealer`);
+    }
+    const payouts = await api('POST', `/api/games/${S.gameId}/settle`);
+    const fresh   = await api('GET',  `/api/games/${S.gameId}`);
+    renderGameState(fresh, true);
+    showResult(payouts);
+
+    // Refresh player balance from server
+    const player = await api('GET', `/api/players/${S.playerId}`);
+    updateBalance(player.balance);
+  } catch(e) { showErr('game-err', e.message); }
+}
+
+// ═══════════════════════════════════════════════
+// Render game state
+// ═══════════════════════════════════════════════
+async function refreshGame() {
+  try {
+    const g = await api('GET', `/api/games/${S.gameId}`);
+    S.gameState = g;
+    renderGameState(g);
+
+    const st = g.status;
+    if (st.startsWith('player_turn')) {
+      const mySeat = g.seats.find(s => s.player_id === S.playerId);
+      if (mySeat?.status === 'bust') {
+        setStatus('Bust! Vượt 21 😱');
+        await finishRound();
+      } else if (mySeat?.status === 'blackjack') {
+        setStatus('Blackjack! 🎉');
+        await finishRound();
+      } else {
+        showCtrl('ctrl-play');
+        setStatus('Đến lượt bạn — Hit hay Stand?');
+      }
+    } else if (st === 'dealer_turn') {
+      await finishRound();
+    } else if (st === 'settled') {
+      const payouts = await api('GET', `/api/games/${S.gameId}`); // re-use state
+      showResult([]);
+    }
+  } catch(e) { showErr('game-err', e.message); }
+}
+
+function renderGameState(g, showDealerFull = false) {
+  const mySeat = g.seats.find(s => s.player_id === S.playerId);
+  const isSettled = g.status === 'settled';
+  const isDealerTurn = g.status === 'dealer_turn';
+  const revealDealer = showDealerFull || isSettled || isDealerTurn;
+
+  // Dealer hand
+  renderHand('dealer-cards', 'dealer-score', g.dealer_hand, !revealDealer);
+
+  // My hand
+  if (mySeat) {
+    renderHand('my-cards', 'my-score', mySeat.hand, false);
+  }
+}
+
+function renderHand(cardsId, scoreId, hand, hideSecond) {
+  const container = document.getElementById(cardsId);
+  const scoreEl   = document.getElementById(scoreId);
+  if (!hand || !hand.cards) return;
+
+  container.innerHTML = hand.cards.map((c, i) => {
+    if (hideSecond && i === 1) return cardHidden();
+    return cardHtml(c);
+  }).join('');
+
+  if (!hideSecond && hand.cards.length > 0) {
+    const outcome = hand.outcome;
+    scoreEl.textContent = outcome === 'blackjack' ? 'Blackjack!' : `${hand.score} pts`;
+    scoreEl.className = `hand-score ${outcome}`;
+    scoreEl.style.display = '';
+  }
+}
+
+function cardHtml(c) {
+  const isRed = c.suit === '♥' || c.suit === '♦';
+  return `
+    <div class="card ${isRed ? 'red' : 'black'}">
+      <span class="rank">${c.rank}</span>
+      <span class="suit">${c.suit}</span>
+      <span class="rank rank-bot">${c.rank}</span>
+    </div>`;
+}
+
+function cardHidden() {
+  return `<div class="card hidden"></div>`;
+}
+
+function clearCards(id) {
+  document.getElementById(id).innerHTML = '';
+}
+
+// ═══════════════════════════════════════════════
+// Result
+// ═══════════════════════════════════════════════
+function showResult(payouts) {
+  let payout = null;
+  if (payouts && payouts.length > 0) {
+    payout = payouts.find(p => p.player_id === S.playerId) || payouts[0];
+  }
+
+  const outcomeEl = document.getElementById('result-outcome');
+  const chipsEl   = document.getElementById('result-chips');
+
+  if (!payout) {
+    outcomeEl.textContent = '—';
+    outcomeEl.className = 'result-outcome';
+    chipsEl.textContent = '';
+  } else {
+    const labels = {
+      blackjack: '🎰 Blackjack!',
+      win:  '🏆 Thắng!',
+      push: '🤝 Hoà',
+      lose: '💀 Thua',
+    };
+    const classes = { blackjack: 'blackjack', win: 'win', push: 'push', lose: 'lose' };
+    outcomeEl.textContent = labels[payout.outcome] || payout.outcome;
+    outcomeEl.className   = `result-outcome ${classes[payout.outcome] || ''}`;
+
+    const net = payout.return_amount - payout.bet_amount;
+    const sign = net > 0 ? '+' : '';
+    chipsEl.textContent =
+      `Cược: ${payout.bet_amount} • Nhận lại: ${payout.return_amount} (${sign}${net})`;
+  }
+
+  showCtrl('ctrl-result');
+  setStatus('Ván đấu kết thúc');
+}
+
+// ═══════════════════════════════════════════════
+// WebSocket
+// ═══════════════════════════════════════════════
+function connectWS() {
+  disconnectWS();
+  if (!S.gameId) return;
+  const ws = new WebSocket(`${WS_BASE}/ws/games/${S.gameId}`);
+
+  ws.onopen = () => {
+    document.getElementById('ws-dot').classList.add('connected');
+    addLog('🟢 Kết nối live');
+  };
+
+  ws.onmessage = (e) => {
+    try {
+      const ev = JSON.parse(e.data);
+      addLog(formatEvent(ev));
+    } catch { addLog(e.data); }
+  };
+
+  ws.onclose = () => {
+    document.getElementById('ws-dot').classList.remove('connected');
+    addLog('🔴 Mất kết nối live');
+  };
+
+  ws.onerror = () => addLog('⚠ WebSocket lỗi');
+
+  // Heartbeat ping mỗi 25s
+  const ping = setInterval(() => {
+    if (ws.readyState === WebSocket.OPEN) ws.send('ping');
+    else clearInterval(ping);
+  }, 25000);
+
+  S.ws = ws;
+}
+
+function disconnectWS() {
+  if (S.ws) { S.ws.close(); S.ws = null; }
+}
+
+function formatEvent(ev) {
+  const icons = {
+    game_started: '🎲 Bắt đầu',
+    card_dealt:   `🃏 Chia: ${ev.card ? ev.card.rank + ev.card.suit : ''}`,
+    player_stood: '✋ Stand',
+    player_bust:  '💥 Bust',
+    game_ended:   `🏁 Kết thúc (dealer: ${ev.dealer_score})`,
+  };
+  return icons[ev.type] || ev.type;
+}
+
+function addLog(msg) {
+  const log = document.getElementById('event-log');
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.textContent = `${new Date().toLocaleTimeString('vi')} ${msg}`;
+  log.insertBefore(entry, log.firstChild);
+  // Keep max 30 entries
+  while (log.children.length > 30) log.removeChild(log.lastChild);
+}
+</script>
+</body>
+</html>
